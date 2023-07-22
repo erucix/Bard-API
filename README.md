@@ -49,8 +49,8 @@ const bard = new Bard()
 bard.GenerateTokens("YOUR_TOKEN_HERE") //__Secure-1PSID
 
 bard.on("generated", (token) => {
-	let c_id="", r_id="", rc_id;
-	bard.Prompt("YOUR_MESSAGE_HERE", token.psid, token.snlm0e, c_id, r_id)
+	let c_id="", r_id="", rc_id="";
+	bard.Prompt("YOUR_MESSAGE_HERE", token.psid, token.snlm0e, c_id, r_id, rc_id)
 	bard.on("response", (responseObject) => {
 		c_id = msg.c_id
 		r_id = msg.r_id       // Updating these three ids again and again

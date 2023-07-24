@@ -1,5 +1,6 @@
-# 💀 GoogleBard API
+# 💀 GoogleBard API v2.0
 Small, lightweight and reliable unofficial Google Bard API built on Node-JS only. No external library implemented and or required to download. Only for educational and testing purpose. And I hold no responsibility of its misuse.
+
 # 🫀 How to run?
 Open your terminal and paste this command.
 ```bash
@@ -13,23 +14,19 @@ Now to implement your own Bot logic you can have a look at ```example.js``` or s
 Make sure you have  `__Secure-1PSID` token with you. You can copy your token from `https://bard.google.com` -> `Dev Console` -> `Application` -> `Cookies` -> `Value of __Secure-1PSID`
 
 ```javascript
-const Bard = require("./Bard")
-const bard = new Bard()
+const bard = require("./bard")
 
-bard.GenerateTokens("YOUR_TOKEN_HERE") //__Secure-1PSID
-
-bard.on("generated", (token) => {
-	bard.Prompt("YOUR_MESSAGE_HERE", token.psid, token.snlm0e)
-	bard.on("response", (responseObject) => {
-		console.log(responseObject) // Object
-	})
-})
+bard({
+    "PSID": "YOUR_TOKEN_HERE",
+    "message": "who is chris evans"
+}).then(data => console.log(data.message))
 ```
 
 Response will be in `object` and will be of following model:
 ```javascript
 {
-	"response": "__CONTAINS_RESPONSE_OF_YOUR_PROMPT__",
+	"status": "pass or fail"
+	"message": "__CONTAINS_RESPONSE_OF_YOUR_PROMPT__",
 	"c_id": "__SOME_RANDOM_ID___",
 	"r_id": "__SOME_RANDOM_ID___",
 	"rc_id": "__SOME_RANDOM_ID___",
@@ -40,25 +37,30 @@ Response will be in `object` and will be of following model:
 }
 
 ```
+These property are not always available. For example in case of ```"status":"fail"``` the `status` and `message` only will be available.
 
-To make the chat memorable to bot use the additional ids provided in response to the prompt i:e `c_id`, `r_id` & `rc_id`. For example:
+All available arguments are here:
 ```javascript
-const Bard = require("./Bard")
-const bard = new Bard()
+const bard = require("./bard")
 
-bard.GenerateTokens("YOUR_TOKEN_HERE") //__Secure-1PSID
-
-bard.on("generated", (token) => {
-	let c_id="", r_id="", rc_id="";
-	bard.Prompt("YOUR_MESSAGE_HERE", token.psid, token.snlm0e, c_id, r_id, rc_id)
-	bard.on("response", (responseObject) => {
-		c_id = msg.c_id
-		r_id = msg.r_id       // Updating these three ids again and again
-		rc_id = msg.rc_id
-		console.log(responseObject)
-	})
-})
+bard({
+    "PSID": "YOUR_TOKEN_HERE",
+    "message": "images of nepal",
+	"SNLM0e":"__MANUALLY_SUPPLIED_SNLM0e__", //optional
+	"c_id": "__SOME_RANDOM_ID___", //optional
+	"r_id": "__SOME_RANDOM_ID___", //optional
+	"rc_id": "__SOME_RANDOM_ID___", //optional
+	"captcha": "captcha value" // in case you are bloacked by google captcha
+	
+}).then(data => console.log(data))
 ```
-🎗️ **Note**: The ids must be in order as in their place. 
+You can copy your captcha token from `https://bard.google.com` -> `Dev Console` -> `Application` -> `Cookies` -> `Value of GOOGLE_ABUSE_EXEMPTION`.
+
+If you can't find the captcha token from cookies panel then theres something you can try:
+- Try opening `bard.google.com` from tor or incognito window
+
+If you encounter a captcha after doing any of these steps solve the captcha and copy the `GOOGLE_ABUSE_EXEMPTION` token.
+
+**NOTE**: BARD API is still not officially released by google so this is a reverse engineered version. Proceed with caution.
 
 **Thanks for the time 💝**

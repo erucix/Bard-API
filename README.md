@@ -1,4 +1,9 @@
 # 💀 GoogleBard API v2.0
+<p align="center">
+	<img src="https://chromeunboxed.com/wp-content/uploads/2023/03/Google-Bard-Feature.png" width="376" height="100%" style="max-width: 100%;">
+</p>
+https://chromeunboxed.com/wp-content/uploads/2023/03/Google-Bard-Feature.png
+
 Small, lightweight and reliable unofficial Google Bard API built on Node-JS only. No external library implemented and or required to download. Only for educational and testing purpose. And I hold no responsibility of its misuse.
 
 # 🫀 How to run?

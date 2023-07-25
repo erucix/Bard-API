@@ -29,12 +29,12 @@ bard({
 Response will be in `object` and will be of following model:
 ```javascript
 {
-	"status": "pass or fail"
-	"message": "__CONTAINS_RESPONSE_OF_YOUR_PROMPT__",
-	"c_id": "__SOME_RANDOM_ID___",
-	"r_id": "__SOME_RANDOM_ID___",
-	"rc_id": "__SOME_RANDOM_ID___",
-	"questions": ["__ALTERNATIVE_QUESTIONS__"], //Array
+    "status": "pass or fail"
+    "message": "__CONTAINS_RESPONSE_OF_YOUR_PROMPT__",
+    "c_id": "__SOME_RANDOM_ID___",
+    "r_id": "__SOME_RANDOM_ID___",
+    "rc_id": "__SOME_RANDOM_ID___",
+    "questions": ["__ALTERNATIVE_QUESTIONS__"], //Array
     "images": ["__IMAGES__"], //Array
     "image_source": ["__IMAGES_SOURCE__"], // Array
     "message_source": ["__MESSAGE_SOURCE__"] // Array
@@ -50,11 +50,11 @@ const bard = require("./bard")
 bard({
     "PSID": "YOUR_TOKEN_HERE",
     "message": "images of nepal",
-	"SNLM0e":"__MANUALLY_SUPPLIED_SNLM0e__", //optional
-	"c_id": "__SOME_RANDOM_ID___", //optional
-	"r_id": "__SOME_RANDOM_ID___", //optional
-	"rc_id": "__SOME_RANDOM_ID___", //optional
-	"captcha": "captcha value" // in case you are bloacked by google captcha
+    "SNLM0e":"__MANUALLY_SUPPLIED_SNLM0e__", //optional
+    "c_id": "__SOME_RANDOM_ID___", //optional
+    "r_id": "__SOME_RANDOM_ID___", //optional
+    "rc_id": "__SOME_RANDOM_ID___", //optional
+    "captcha": "captcha value" // in case you are blocked by google captcha
 	
 }).then(data => console.log(data))
 ```

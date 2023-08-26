@@ -1,6 +1,7 @@
-const bard = require("./bard")
+const bard = require("./Bard");
 
-bard({
-    "PSID": "YOUR_TOKEN_HERE",
-    "message": "images of nepal"
-}).then(data => console.log(data))
+bard.prompt({
+    "message": "Who is chris evans",
+    "cookie": "YOUR-COOKIE-HERE",
+    "snlm0e": "YOUR-SNLME0-TOKEN-HERE"
+}).then(data => console.log(data.message.answer))

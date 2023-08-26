@@ -1,300 +1,374 @@
 // Provided by @erucix (github)
-// Bard v2.0
+// Bard v3.0
 // Change-logs:
-//  v2.0: 
-//      - Made more effiecient
-//      - No need to manually give ids. (self handled)
-//      - Added database support 
+//  v3.0: 
+//      - Modified for efficiency
+//      - Improved to work with latest Bard Version
+//      - Added support for recent chat history.
+//      - Added support for recent conversation history.
 
-const { writeFileSync, readFileSync, accessSync, constants } = require("fs");
-const { join } = require("path");
 
-const MESSAGES = {
-    "emptyToken": "__Secure-1PSID is not supplied in parameter.",
-    "findToken": "You can copy your token from https://bard.google.com -> Dev Console -> Application -> Cookies -> Value of __Secure-1PSID.",
-    "findCaptcha": "You can copy your captcha token from https://bard.google.com -> Dev Console -> Application -> Cookies -> Value of GOOGLE_ABUSE_EXEMPTION.",
-    "findSnl": "You can manually find SNLM0e token from https://bard.google.com -> View Page Source -> Search for 'SNLM0e'",
-    "invalidToken": "Invalid __Secure-1PSID supplied.",
-    "googleCaptchaMessage": "Our systems have detected unusual traffic from your computer network.This page checks to see if it's really you sending the requests, and not a robot."
-}
+const https = require("https");
+const fs = require("fs");
 
-const URI = {
-    "baseURI": "https://bard.google.com/?hl=en",
-    "bardURI": "https://bard.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl=boq_assistant-bard-web-server_20230718.13_p2&_reqid=1174904&rt=c"
-}
-
-let DEBUG = false
-
-const userAccountsPath = join(__dirname, "accounts.bard")
-
-function d(functionName, message = "ENTRY") {
-    if (DEBUG) {
-        console.log(functionName + "(): " + message)
+const constants = {
+    "filename": {
+        "dataFileName": "accounts.json"
+    },
+    "errors": {
+        "failedToCreateFile": "Failed to create file to save content."
+    },
+    "uri": {
+        "bardHomePage": "https://bard.google.com",
+        "chatTitleHistory": "https://bard.google.com/u/1/_/BardChatUi/data/batchexecute",
+        "chatHistory": "https://bard.google.com/u/1/_/BardChatUi/data/batchexecute?rpcids=hNvQHb",
+        "chatUri": "https://bard.google.com/u/1/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl="
     }
 }
 
-function createUserAccountsFile(content = "") {
-    d("createUserAccountsFile")
+var cookie = "";
+
+function handleErrorReturn(content) {
+    let formattedTextObject = {
+        "status": "fail",
+        "message": content
+    };
+
+    return formattedTextObject;
+}
+
+function handleSuccessReturn(content) {
+    let formattedTextObject = {
+        "status": "success",
+        "message": content
+    };
+
+    return formattedTextObject;
+}
+
+function getSavedPreference() {
     try {
-        d("createUserAccountsFile", "Creating file. Given Content: " + content)
-        writeFileSync(userAccountsPath, content ? content : content)
-    } catch (err) {
-        throw err
-    }
-}
 
-function readUserAccounts() {
-    d("readUserAccounts")
-    if (!fileExists(userAccountsPath)) {
-        d("readUserAccounts", "File doesn't exist calling file creator function")
-        createUserAccountsFile()
-    }
-    let content = readFileSync(userAccountsPath, { encoding: "utf8" })
-    d("readUserAccounts", "Returned data: " + content)
-    return JSON.parse(`{${content}}`)
-}
+        let savedFileContent =
+            fs.readFileSync(constants.filename.dataFileName, "utf-8");
 
-function fileExists(filePath) {
-    d("fileExists")
-    try {
-        d("fileExists", "Checking if " + filePath + " exists")
-        accessSync(filePath, constants.F_OK)
-        d("fileExists", filePath + " exist")
-        return true
+        savedFileContent = JSON.parse(savedFileContent); // We are storing the content in JSON format
+
+        return handleSuccessReturn(savedFileContent);
+
     } catch {
-        d("fileExists", filePath + " doesnt exist")
-        return false
-    }
-}
 
-function addAccount(accountDetails) {
-    d("addAccount")
-    let accounts = readUserAccounts()
-    accounts[accountDetails.PSID] = {
-        "SNLM0e": accountDetails.SNLM0e,
-        "c_id": accountDetails.c_id,
-        "r_id": accountDetails.r_id,
-        "rc_id": accountDetails.rc_id,
-        "captcha": accountDetails.captcha
-    }
+        try {
+            fs.writeFileSync(constants.filename.dataFileName, "{}");
 
-    accounts = JSON.stringify(accounts).slice(1, -1)
+            return getSavedPreference();
+        } catch {
 
-    d("addAccount", "Caling file creater to write " + accounts)
+            return handleErrorReturn(constants.errors.failedToCreateFile + ": " + constants.filename.dataFileName); // Giving-Up since we can't even write on file.
 
-    createUserAccountsFile(accounts)
-}
-
-function accountExists(PSID) {
-    d("accountExists")
-    !fileExists(userAccountsPath) && createUserAccountsFile()
-
-    const result = readUserAccounts().hasOwnProperty(PSID)
-
-    d("accountExists", `Account ${PSID} existence: ` + result)
-
-    return result
-}
-
-function checkToken(token, type = "PSID") {
-    d("checkToken")
-    d("checkToken", `Token Value: ${token}, Type: ${type}`)
-    if (type == "PSID") {
-        if (!token) {
-
-            d("checkToken", "Empty token. Token failed.")
-            return {
-                "status": "fail",
-                "message": `${MESSAGES.emptyToken}${MESSAGES.findToken}And use it like Eg: GenerateTokens('MY __Secure-1PSID TOKEN HERE')`
-            }
         }
-        if (!token.endsWith(".")) {
 
-            d("checkToken", "Invalid Token. Token failed.")
-            return {
-                "status": "fail",
-                "message": `${MESSAGES.invalidToken}${MESSAGES.findToken}`
-            }
-        }
-    }
-    d("checkToken", "Token passed")
-    return {
-        "status": "pass"
     }
 }
 
-function gatherTokens(dataObj) {
+function addToSavedPreference(propertyName, propertyValue) {
+    let savedPreference = getSavedPreference();
+
+    if (savedPreference.status == "success") {
+        let newModifiedData = savedPreference.message;
+        newModifiedData[propertyName] = propertyValue;
+
+        try {
+            fs.writeFileSync(constants.filename.dataFileName, JSON.stringify(newModifiedData))
+            return handleSuccessReturn(null);
+        } catch {
+            return handleErrorReturn(constants.errors.failedToCreateFile + ": " + constants.filename.dataFileName);
+        }
+    } else {
+        return savedPreference;
+    }
+}
+
+function searchInText(textContent, regex) {
+    let match = textContent.match(regex);
+
+    if (match && match.length > 0) {
+        return handleSuccessReturn(match[1]);
+    } else {
+        return handleErrorReturn("Can't find " + regex + " in the provided text content.")
+    }
+}
+
+async function getBardApiTokens() {
+    let dataFromFile = getSavedPreference();
+
+    if (dataFromFile.status == "success") {
+        dataFromFile = dataFromFile.message;
+        if (dataFromFile.snlm0e)
+            return handleSuccessReturn(dataFromFile);
+    }
 
     return new Promise(function (resolve) {
-        d("gatherTokens")
-        d("gatherTokens", "Recieved Object Parameter: " + dataObj)
-        if (dataObj && !!dataObj.message) {
-            DEBUG = dataObj.DEBUG
-            if (checkToken(dataObj.PSID).status == "pass") {
+        APICall({
+            "uri": constants.uri.bardHomePage,
+            "cookie": cookie,
+            "accept": "*/*",
+            "method": "GET",
+        }).then(data => {
+            if (data.status == "success") {
+                data = data.message;
 
-                const c_id = dataObj.c_id ? dataObj.c_id : (accountExists(dataObj.PSID) && readUserAccounts()[dataObj.PSID].c_id) ? readUserAccounts()[dataObj.PSID].c_id : ""
+                let SNlM0e = searchInText(data, /"SNlM0e":"([^"]*)"/);
+                let cfb2h = searchInText(data, /"cfb2h":"([^"]*)"/);
 
-                const r_id = dataObj.r_id ? dataObj.r_id : (accountExists(dataObj.PSID) && readUserAccounts()[dataObj.PSID].r_id) ? readUserAccounts()[dataObj.PSID].r_id : ""
-
-                const rc_id = dataObj.rc_id ? dataObj.rc_id : (accountExists(dataObj.PSID) && readUserAccounts()[dataObj.PSID].rc_id) ? readUserAccounts()[dataObj.PSID].rc_id : ""
-
-                const captcha = dataObj.captcha ? dataObj.captcha : (accountExists(dataObj.PSID) && readUserAccounts()[dataObj.PSID].captcha) ? readUserAccounts()[dataObj.PSID].captcha : ""
-
-
-                if (dataObj.SNLM0e) {
-                    SNLM0e = dataObj.SNLM0e
-                    addAccount({
-                        "PSID": dataObj.PSID,
-                        "SNLM0e": dataObj.SNLM0e,
-                        "c_id": c_id,
-                        "r_id": r_id,
-                        "rc_id": rc_id,
-                        "captcha": captcha
-                    })
-                    resolve({
-                        "status": "pass",
-                        "message": dataObj.message,
-                        "PSID": dataObj.PSID,
-                        "SNLM0e": dataObj.SNLM0e,
-                        "c_id": c_id,
-                        "r_id": r_id,
-                        "rc_id": rc_id,
-                        "captcha": captcha
-                    })
-                } else if (accountExists(dataObj.PSID) && readUserAccounts()[dataObj.PSID].SNLM0e) {
-                    resolve({
-                        "status": "pass",
-                        "message": dataObj.message,
-                        "PSID": dataObj.PSID,
-                        "SNLM0e": readUserAccounts()[dataObj.PSID].SNLM0e,
-                        "c_id": c_id,
-                        "r_id": r_id,
-                        "rc_id": rc_id,
-                        "captcha": captcha
-                    })
-                } else {
-                    resolve(fetch(URI.baseURI, {
-                        "headers": {
-                            "cookie": `__Secure-1PSID=${dataObj.PSID}; ` + (dataObj.CAPTCHA ? "GOOGLE_ABUSE_EXEMPTION=" + dataObj.CAPTCHA : "")
-                        }
-                    })
-                        .then(data => data.text())
-                        .then(data => {
-                            if (data.includes(MESSAGES.googleCaptchaMessage)) {
-                                if (dataObj.CAPTCHA == "")
-                                    return {
-                                        "status": "fail",
-                                        "message": `You are blocked by captcha.${MESSAGES.findCaptcha} Please see the documentation for this issue.`
-                                    }
-                                return {
-                                    "status": "fail",
-                                    "message": `Your captcha token is outdated or invalid, regenerate a new one.${MESSAGES.findCaptcha}`
-                                }
-                            }
-                            return data.match(/"SNlM0e":"(.*?)"/);
-                        })
-                        .then(data => {
-                            if (!data)
-                                return {
-                                    "status": "fail",
-                                    "message": `Looks like we can't find the SNLM0e token.${MESSAGES.findSnl}`
-                                }
-                            addAccount({
-                                "PSID": dataObj.PSID,
-                                "SNLM0e": data[1],
-                                "c_id": c_id,
-                                "r_id": r_id,
-                                "rc_id": rc_id,
-                                "captcha": captcha
-                            })
-                            return {
-                                "status": "pass",
-                                "message": dataObj.message,
-                                "PSID": dataObj.PSID,
-                                "SNLM0e": data[1],
-                                "c_id": c_id,
-                                "r_id": r_id,
-                                "rc_id": rc_id,
-                                "captcha": captcha
-                            }
-                        }))
+                if (SNlM0e.status == "fail") {
+                    resolve(SNlM0e);
+                }
+                if (cfb2h.status == "fail") {
+                    resolve(cfb2h);
                 }
 
-            }
-            resolve(checkToken(dataObj.PSID))
-        }
-        resolve({
-            "status": "fail",
-            "message": "Empty message is not allowed"
-        })
-    })
+                SNlM0e.message = "THIS_IS_UNDER_DEVELOPMENT";
 
-}
+                addToSavedPreference("snlm0e", SNlM0e.message);
+                addToSavedPreference("cfb2h", cfb2h.message);
 
-function gatherResponse(dataObj) {
-    return new Promise(function (resolve) {
-        d("gatherResponse")
-        d("gatherResponse", "Recieved Object Parameter: " + JSON.stringify(dataObj))
-        let body = "f.req=" + encodeURIComponent(`[null, ${JSON.stringify(JSON.stringify([[dataObj.message], ["en"], [dataObj.c_id, dataObj.r_id, dataObj.rc_id]]))}]`) + "&at=" + encodeURIComponent(dataObj.SNLM0e)
-
-        d("gatherResponse", "Body for fetch: " + body)
-
-        fetch(URI.bardURI, {
-            "headers": {
-                "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-                "cookie": `__Secure-1PSID=${dataObj.PSID};`
-            },
-            "body": body,
-            "method": "POST"
-        })
-            .then(data => data.text())
-            .then(data => data.slice(data.indexOf('[["'), data.lastIndexOf('"]]') + 3))
-            .then(data => {
-                d("gatherResponse", "Bard response: " + data)
-                try {
-                    data = JSON.parse(JSON.parse(data)[0][2])
-                    return data
-                } catch {
-                    return {
-                        "status": "fail",
-                        "message": "Failed to parse response JSON from bard.google.com."
-                    }
-                }
-            })
-            .then(data => {
-
-                data = {
-                    "status": "pass",
-                    "message": data[4][0][1][0],
-                    "c_id": data[1][0],
-                    "r_id": data[1][1],
-                    "rc_id": data[4][0][0],
-                    "questions": data[2] ? data[2].map((elem) => { if (elem) return elem[0] }) : [],
-                    "images": data[4][0][4] ? data[4][0][4].map(elem => elem[1][3]) : [],
-                    "image_source": data[4][0][4] ? data[4][0][4].map(elem => elem[1][0][0]) : [],
-                    "message_source": data[4][0][2] != [] && data[4][0][2] != null && data[4][0][2][0] ? data[4][0][2][0].map(elem => elem[2][0]) : []
-                }
+                resolve(handleSuccessReturn({
+                    "snlm0e": SNlM0e.message,
+                    "cfb2h": cfb2h.message
+                }));
+            } else {
                 resolve(data);
+            }
+        })
+    });
+}
+
+async function APICall(options) {
+    return new Promise(function (resolve) {
+        if (options.method == "POST") {
+
+            const optionss = {
+                "headers": {
+                    "accept-language": "en-US,en;q=0.9",
+                    "content-type": "application/x-www-form-urlencoded;",
+                    "cookie": cookie
+                },
+                "method": "POST",
+            }
+
+            const request = https.request(options.uri, optionss, (response) => {
+                let responseText = "";
+
+                if (response.statusCode != 200)
+                    resolve(handleErrorReturn("Server returned status code " + response.statusCode));
+
+                response.on("data", (chunk) => {
+                    responseText += chunk;
+                });
+
+                response.on("end", () => {
+                    resolve(handleSuccessReturn(responseText));
+                });
+            });
+
+            request.write(options.body);
+
+            request.end();
+        } else if (options.method == "GET") {
+
+            const optionsForRequest = {
+                "headers": {
+                    "accept": options.accept,
+                    "accept-language": "en-US,en;q=0.9",
+                    "cookie": cookie
+                },
+                "method": "GET",
+                "body": null,
+                "referrerPolicy": "origin",
+            }
+
+            https.get(options.uri, optionsForRequest, (responseFromServer) => {
+                let responseContent = "";
+
+                if (responseFromServer.statusCode != 200)
+                    resolve(handleErrorReturn("Server responded with status " + responseFromServer.statusCode));
+
+                responseFromServer.on("data", (chunk) => {
+                    responseContent += chunk;
+                });
+
+                responseFromServer.on("end", () => {
+                    resolve(handleSuccessReturn(responseContent));
+                });
+
             })
+        } else {
+            resolve(handleErrorReturn(options.method.toUpperCase()) + ": Method not allowed");
+        }
+    });
+}
+
+async function getBardChatTitleHistory(token) {
+
+    let req = [[["MaZiqc", "[13,null,[0]]", null, "generic"]]];
+    req = encodeURIComponent(JSON.stringify(req));
+
+    const at = encodeURIComponent(token.snlm0e);
+
+    const postBody = `f.req=${req}&at=${at}&`;
+
+    return new Promise((resolve) => {
+        APICall({
+            "uri": constants.uri.chatTitleHistory,
+            "accept": "*/*",
+            "body": postBody,
+            "content-type": "application/x-www-form-urlencoded;",
+            "method": "POST",
+            "snlm0e": token.snlm0e
+        }).then(data => {
+
+            if (data.status == "fail") resolve(data);
+
+            data = data.message;
+
+            let arrayWithChatTitle = [];
+
+            let jsonBody = data.slice(data.indexOf("[["));
+            jsonBody = JSON.parse(jsonBody)[0][2];
+            jsonBody = JSON.parse(jsonBody);
+            jsonBody = jsonBody[0];
+
+            jsonBody.forEach(e => {
+                arrayWithChatTitle.push({
+                    "id": e[0],
+                    "title": e[1]
+                });
+            })
+
+            resolve(handleSuccessReturn(arrayWithChatTitle));
+        })
+    })
+
+}
+
+async function getChatHistory(c_id, token) {
+    const req = encodeURIComponent(JSON.stringify([[["hNvQHb", JSON.stringify([c_id, 10]), null, "generic"]]]));
+    const at = encodeURIComponent(token.snlm0e);
+
+    const postBody = `f.req=${req}&at=${at}`
+
+    return new Promise((resolve) => {
+        APICall({
+            "uri": constants.uri.chatHistory,
+            "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "cookie": cookie,
+            "method": "POST",
+            "body": postBody
+        }).then(responseChats => {
+            if (responseChats.status == "fail")
+                resolve(responseChats);
+
+            responseChats = responseChats.message;
+
+            responseChats = responseChats.slice(responseChats.indexOf("wrb.fr") - 3);
+            responseChats = JSON.parse(responseChats)[0][2];
+            responseChats = JSON.parse(responseChats)[0];
+
+            let newArrayWithChatHistory = [];
+
+            responseChats.forEach(element => {
+                newArrayWithChatHistory.push({
+                    "you": element[2][0][0],
+                    "bard": element[3][0][0][1][0]
+                });
+            });
+
+            newArrayWithChatHistory.reverse();  // Since the order of chat is last message to first message
+
+            resolve(handleSuccessReturn(newArrayWithChatHistory));
+        });
+    });
+}
+
+async function prompt(data) {
+    let dataFromFile = getSavedPreference().message;
+
+    let c_id = data.c_id || dataFromFile.c_id || "";
+    let r_id = data.r_id || dataFromFile.r_id || "";
+    let rc_id = data.rc_id || dataFromFile.rc_id || "";
+
+    let req = [null, JSON.stringify([[data.message], ["en"], [c_id, r_id, rc_id]])]
+    req = encodeURIComponent(JSON.stringify(req));
+
+    let at = encodeURIComponent(data.snlm0e);
+
+    const postBody = `f.req=${req}&at=${at}`
+
+    return new Promise(function (resolve) {
+
+        APICall({
+            "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "body": postBody,
+            "method": "POST",
+            "cookie": cookie,
+            "uri": data.uri
+        }).then(data => {
+            if (data.status == "fail")
+                resolve(data);
+
+            let responseMessage = data.message;
+
+            let message = JSON.parse(responseMessage.slice(responseMessage.indexOf("wrb.fr") - 3))[0][2];
+            message = JSON.parse(message);
+
+            let alternativeQuestions = [];
+            message[2].forEach(elem => {
+                alternativeQuestions.push(elem[0]);
+            });
+
+            let ids = [message[1][0], message[1][1], message[4][0][0]];
+
+            let answer = message[4][0][1][0];
+
+            let images = [];
+
+            !!(message[4][0][4]) && message[4][0][4].forEach((elem) => {
+                images.push({
+                    "name": elem[2].replace("[", "").replace("]", ""),
+                    "source": elem[1][1],
+                    "url": elem[1][0][0],
+                    "gstatic_url": elem[1][3]
+                });
+            })
+
+            addToSavedPreference("c_id", ids[0]);
+            addToSavedPreference("r_id", ids[1]);
+            addToSavedPreference("rc_id", ids[2]);
+
+            resolve(handleSuccessReturn({
+                "id": ids,
+                "answer": answer,
+                "images": images,
+                "altQuestions": alternativeQuestions
+            }));
+
+        })
+    });
+}
+
+
+exports.prompt = async function (tokenObject) {
+    cookie = tokenObject.cookie;
+
+    return new Promise((resolve) => {
+        getBardApiTokens()
+            .then(data => {
+                prompt({
+                    "uri": constants.uri.chatUri + data.message.cfb2h,
+                    "snlm0e": data.message.snlm0e,
+                    "message": tokenObject.message,
+                }).then(data => resolve(data))
+            });
     })
 }
-
-async function prompt(dataObj) {
-    const data = await gatherTokens(dataObj);
-    if (data.status == "pass") {
-        return gatherResponse(data)
-            .then(dataObjs => {
-                addAccount({
-                    "PSID": dataObj.PSID,
-                    "SNLM0e": dataObj.SNLM0e,
-                    "c_id": dataObjs.c_id,
-                    "r_id": dataObjs.r_id,
-                    "rc_id": dataObjs.rc_id
-                });
-                return dataObjs;
-            });
-    }
-    return data;
-}
-
-module.exports = prompt

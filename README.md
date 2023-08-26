@@ -1,4 +1,4 @@
-# 💀 GoogleBard API v2.0
+# 💀 GoogleBard API v3.0
 <p align="center">
 	<img src="https://chromeunboxed.com/wp-content/uploads/2023/03/Google-Bard-Feature.png" width="376" height="100%" style="max-width: 100%;">
 </p>
@@ -9,21 +9,38 @@ Small, lightweight and reliable unofficial Google Bard API built on Node-JS only
 Open your terminal and paste this command.
 ```bash
 git clone https://github.com/erucix/bard-api.git
-cd bard-api
-node example.js
+cd Bard-API
+node example.js #make sure you have put your tokens in example.js
 ```
 
 Now to implement your own Bot logic you can have a look at ```example.js``` or see this. 
 
-Make sure you have  `__Secure-1PSID` token with you. You can copy your token from `https://bard.google.com` -> `Dev Console` -> `Application` -> `Cookies` -> `Value of __Secure-1PSID`
+Make sure you have  `cookie` token with you. You need the full cookie list.
 
+To get your full `cookie` list follow this step:
+- Open https://bard.google.com
+- Open `Network` tab from `Developer Tools` or press `Ctrl+Shift+I` and go to `Network`
+- Now refresh `https://bard.google.com`.
+- Under `Name` section click on `bard.gooogle.com` or `/u/1` (You might need to scroll to top first)
+- Now under `Request Headers` copy all content from `Cookie`
+
+To get your `snlm0e` token follow this step:
+- Open https://bard.google.com
+- Open `Console` from `Developer Tools` or press `Ctrl+Shift+I`
+- Paste this code in your console<br>
 ```javascript
-const bard = require("./bard")
+prompt("Copy me: ", WIZ_global_data.SNlM0e)
+```
+Now this is the file where you implement the `cookie` and `snlm0e` tokens
+```javascript
 
-bard({
-    "PSID": "YOUR_TOKEN_HERE",
-    "message": "who is chris evans"
-}).then(data => console.log(data.message))
+const bard = require("./Bard");
+
+bard.prompt({
+    "message": "Who is chris evans",
+    "cookie": "YOUR-COOKIE-HERE",
+    "snlm0e": "YOUR-SNLME0-TOKEN-HERE"
+}).then(data => console.log(data.message.answer))
 ```
 
 Response will be in `object` and will be of following model:
@@ -31,39 +48,13 @@ Response will be in `object` and will be of following model:
 {
     "status": "pass or fail"
     "message": "__CONTAINS_RESPONSE_OF_YOUR_PROMPT__",
-    "c_id": "__SOME_RANDOM_ID___",
-    "r_id": "__SOME_RANDOM_ID___",
-    "rc_id": "__SOME_RANDOM_ID___",
-    "questions": ["__ALTERNATIVE_QUESTIONS__"], //Array
-    "images": ["__IMAGES__"], //Array
-    "image_source": ["__IMAGES_SOURCE__"], // Array
-    "message_source": ["__MESSAGE_SOURCE__"] // Array
-}
-
-```
-These property are not always available. For example in case of ```"status":"fail"``` the `status` and `message` only will be available.
-
-All available arguments are here:
-```javascript
-const bard = require("./bard")
-
-bard({
-    "PSID": "YOUR_TOKEN_HERE",
-    "message": "images of nepal",
-    "SNLM0e":"__MANUALLY_SUPPLIED_SNLM0e__", //optional
     "c_id": "__SOME_RANDOM_ID___", //optional
     "r_id": "__SOME_RANDOM_ID___", //optional
     "rc_id": "__SOME_RANDOM_ID___", //optional
-    "captcha": "captcha value" // in case you are blocked by google captcha
-	
-}).then(data => console.log(data))
+}
+
 ```
-You can copy your captcha token from `https://bard.google.com` -> `Dev Console` -> `Application` -> `Cookies` -> `Value of GOOGLE_ABUSE_EXEMPTION`.
-
-If you can't find the captcha token from cookies panel then theres something you can try:
-- Try opening `bard.google.com` from tor or incognito window
-
-If you encounter a captcha after doing any of these steps solve the captcha and copy the `GOOGLE_ABUSE_EXEMPTION` token.
+You can also get `Conversation history `and` Conversation List` using the built in api and this is left to be solved by the users themselves.
 
 **NOTE**: BARD API is still not officially released by google so this is a reverse engineered version. Proceed with caution.
 
